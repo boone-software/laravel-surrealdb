@@ -2,22 +2,17 @@
 
 namespace BooneStudios\Surreal;
 
-use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Database\Connection as BaseConnection;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
+use Surreal\Surreal;
 
 class Connection extends BaseConnection
 {
     /**
-     * The Surreal database connection handler.
+     * The Surreal database connection handler.=
      *
-     * @param array $config
-     * @param array $options
-     *
-     * @var \GuzzleHttp\Client
+     * @var \Surreal\Surreal
      */
     protected $connection;
 
@@ -52,29 +47,28 @@ class Connection extends BaseConnection
      * @param array $config
      * @param array $options
      *
-     * @var \GuzzleHttp\Client
+     * @return \Surreal\Surreal
+     * @throws \Exception
      */
-    protected function createConnection(array $config, array $options)
+    protected function createConnection(array $config, array $options): Surreal
     {
         $baseUri = (! parse_url($config['host'], PHP_URL_HOST))
             ? $config['host'] . ':' . $config['port']
             : $config['host'];
 
-        $clientConfig = [
-            'base_uri' => $baseUri,
-            'headers'  => [
-                'Accept'        => 'application/json',
-                'NS'            => $config['namespace'],
-                'DB'            => $config['database'],
-            ],
-        ];
+        $db = new Surreal;
 
-        if ($config['username'] && $config['password']) {
-            $credentials = base64_encode($config['username'] . ':' . $config['password']);
-            $clientConfig['headers']['Authorization'] = 'Basic ' . $credentials;
-        }
+        $db->connect($baseUri, [
+            'namespace' => $config['namespace'],
+            'database' => $config['database'],
+        ]);
 
-        return new GuzzleClient($clientConfig);
+        $db->signin([
+            'user' => $config['username'],
+            'pass' => $config['password'],
+        ]);
+
+        return $db;
     }
 
     /**
